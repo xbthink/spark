@@ -33,12 +33,20 @@ object PartitionedFileUtil {
       maxSplitBytes: Long,
       partitionValues: InternalRow): Seq[PartitionedFile] = {
     if (isSplitable) {
-      (0L until file.getLen by maxSplitBytes).map { offset =>
-        val remaining = file.getLen - offset
-        val size = if (remaining > maxSplitBytes) maxSplitBytes else remaining
-        val hosts = getBlockHosts(getBlockLocations(file), offset, size)
-        PartitionedFile(partitionValues, SparkPath.fromPath(filePath), offset, size, hosts,
-          file.getModificationTime, file.getLen)
+      val blocks = getBlockLocations(file);
+      if (!blocks.isEmpty) {
+        blocks.map { block =>
+          PartitionedFile(partitionValues, SparkPath.fromPath(filePath), block.getOffset,
+            block.getLength, block.getHosts, file.getModificationTime, file.getLen)
+        }
+      } else {
+        (0L until file.getLen by maxSplitBytes).map { offset =>
+          val remaining = file.getLen - offset
+          val size = if (remaining > maxSplitBytes) maxSplitBytes else remaining
+          val hosts = getBlockHosts(getBlockLocations(file), offset, size)
+          PartitionedFile(partitionValues, SparkPath.fromPath(filePath), offset, size, hosts,
+            file.getModificationTime, file.getLen)
+        }
       }
     } else {
       Seq(getPartitionedFile(file, filePath, partitionValues))
@@ -95,4 +103,3 @@ object PartitionedFileUtil {
     }
   }
 }
-
