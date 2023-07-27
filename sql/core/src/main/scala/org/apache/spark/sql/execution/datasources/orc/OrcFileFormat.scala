@@ -226,7 +226,7 @@ class OrcFileFormat
           iter.asInstanceOf[Iterator[InternalRow]]
         } else {
           val orcRecordReader = new OrcInputFormat[OrcStruct]
-            .createRecordReader(fileSplit, taskAttemptContext)
+            .createRecordReader(orcSplit, taskAttemptContext)
           val iter = new RecordReaderIterator[OrcStruct](orcRecordReader)
           Option(TaskContext.get()).foreach(_.addTaskCompletionListener[Unit](_ => iter.close()))
 
