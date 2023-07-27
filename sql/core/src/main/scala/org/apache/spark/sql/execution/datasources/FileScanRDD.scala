@@ -58,7 +58,8 @@ case class PartitionedFile(
     length: Long,
     @transient locations: Array[String] = Array.empty,
     modificationTime: Long = 0L,
-    fileSize: Long = 0L) {
+    fileSize: Long = 0L,
+    extendedInfo: Array[Byte] = Array.empty) {
 
   def pathUri: URI = filePath.toUri
   def toPath: Path = filePath.toPath

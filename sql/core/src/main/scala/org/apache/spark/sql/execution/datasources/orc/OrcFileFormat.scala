@@ -40,6 +40,14 @@ import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
 import org.apache.spark.util.{SerializableConfiguration, Utils}
 
+case class OrcSplit(file: Path,
+                    start: Long,
+                    length: Long,
+                    hosts: Array[String],
+                    extendedInfo: Array[Byte] = Array.empty)
+  extends FileSplit(file, start, length, hosts) {
+}
+
 /**
  * New ORC File Format based on Apache ORC.
  */
@@ -192,7 +200,8 @@ class OrcFileFormat
 
         val includeColumns = requestedColIds.filter(_ != -1).sorted.mkString(",")
         taskConf.set(OrcConf.INCLUDE_COLUMNS.getAttribute, includeColumns)
-        val fileSplit = new FileSplit(filePath, file.start, file.length, Array.empty)
+        val orcSplit = new OrcSplit(filePath, file.start, file.length, Array.empty,
+          file.extendedInfo)
         val attemptId = new TaskAttemptID(new TaskID(new JobID(), TaskType.MAP, 0), 0)
         val taskAttemptContext = new TaskAttemptContextImpl(taskConf, attemptId)
 
@@ -206,7 +215,7 @@ class OrcFileFormat
           val requestedDataColIds = requestedColIds ++ Array.fill(partitionSchema.length)(-1)
           val requestedPartitionColIds =
             Array.fill(requiredSchema.length)(-1) ++ Range(0, partitionSchema.length)
-          batchReader.initialize(fileSplit, taskAttemptContext)
+          batchReader.initialize(orcSplit, taskAttemptContext)
           batchReader.initBatch(
             TypeDescription.fromString(resultSchemaString),
             resultSchema.fields,

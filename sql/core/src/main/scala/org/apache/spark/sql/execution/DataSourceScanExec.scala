@@ -21,6 +21,8 @@ import java.util.concurrent.TimeUnit._
 
 import org.apache.commons.lang3.StringUtils
 import org.apache.hadoop.fs.Path
+import org.apache.orc.{OrcConf, OrcFile}
+import org.apache.orc.impl.OrcTail
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.{FileSourceOptions, InternalRow, TableIdentifier}
@@ -31,6 +33,7 @@ import org.apache.spark.sql.catalyst.plans.physical.{HashPartitioning, Partition
 import org.apache.spark.sql.catalyst.util.{truncatedString, CaseInsensitiveMap}
 import org.apache.spark.sql.errors.QueryExecutionErrors
 import org.apache.spark.sql.execution.datasources._
+import org.apache.spark.sql.execution.datasources.orc.OrcFileFormat
 import org.apache.spark.sql.execution.datasources.parquet.{ParquetFileFormat => ParquetSource}
 import org.apache.spark.sql.execution.datasources.v2.PushedDownOperators
 import org.apache.spark.sql.execution.metric.{SQLMetric, SQLMetrics}
@@ -699,6 +702,15 @@ case class FileSourceScanExec(
         val filePath = file.getPath
 
         if (shouldProcess(filePath)) {
+          var extendedInfo: Array[Byte] = Array.empty
+          if (relation.fileFormat.isInstanceOf[OrcFileFormat]) {
+            val conf = relation.sparkSession.sessionState
+              .newHadoopConfWithOptions(relation.options)
+            val reader = OrcFile.createReader(filePath,
+              OrcFile.readerOptions(conf).maxLength(OrcConf.MAX_FILE_LENGTH.getLong(conf)))
+            extendedInfo = new OrcTail(reader.getFileTail, reader.getSerializedFileFooter,
+              file.getModificationTime).getMinimalFileTail.toByteArray;
+          }
           val isSplitable = relation.fileFormat.isSplitable(
               relation.sparkSession, relation.options, filePath) &&
             // SPARK-39634: Allow file splitting in combination with row index generation once
@@ -710,7 +722,8 @@ case class FileSourceScanExec(
             filePath = filePath,
             isSplitable = isSplitable,
             maxSplitBytes = maxSplitBytes,
-            partitionValues = partition.values
+            partitionValues = partition.values,
+            extendedInfo
           )
         } else {
           Seq.empty

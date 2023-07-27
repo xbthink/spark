@@ -25,10 +25,8 @@ import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
-import org.apache.orc.OrcConf;
-import org.apache.orc.OrcFile;
-import org.apache.orc.Reader;
-import org.apache.orc.TypeDescription;
+import org.apache.orc.*;
+import org.apache.orc.impl.OrcTail;
 import org.apache.orc.mapred.OrcInputFormat;
 
 import org.apache.spark.sql.catalyst.InternalRow;
@@ -119,15 +117,18 @@ public class OrcColumnarBatchReader extends RecordReader<Void, ColumnarBatch> {
   @Override
   public void initialize(
       InputSplit inputSplit, TaskAttemptContext taskAttemptContext) throws IOException {
-    FileSplit fileSplit = (FileSplit)inputSplit;
+    OrcSplit orcSplit = (OrcSplit)inputSplit;
+    OrcProto.FileTail fileTail = OrcProto.FileTail.parseFrom(orcSplit.extendedInfo());
+    OrcTail orcTail = new OrcTail(fileTail, null);
     Configuration conf = taskAttemptContext.getConfiguration();
     Reader reader = OrcFile.createReader(
-      fileSplit.getPath(),
+      orcSplit.getPath(),
       OrcFile.readerOptions(conf)
         .maxLength(OrcConf.MAX_FILE_LENGTH.getLong(conf))
-        .filesystem(fileSplit.getPath().getFileSystem(conf)));
+        .filesystem(orcSplit.getPath().getFileSystem(conf))
+        .orcTail(orcTail));
     Reader.Options options =
-      OrcInputFormat.buildOptions(conf, reader, fileSplit.getStart(), fileSplit.getLength());
+      OrcInputFormat.buildOptions(conf, reader, orcSplit.getStart(), orcSplit.getLength());
     recordReader = reader.rows(options);
   }
 
