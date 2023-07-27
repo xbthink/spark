@@ -166,7 +166,7 @@ export MAVEN_OPTS="${MAVEN_OPTS:--Xss128m -Xmx4g -XX:ReservedCodeCacheSize=128m}
 # Store the command as an array because $MVN variable might have spaces in it.
 # Normal quoting tricks don't work.
 # See: http://mywiki.wooledge.org/BashFAQ/050
-BUILD_COMMAND=("$MVN" clean package -DskipTests $@)
+BUILD_COMMAND=("$MVN" package -DskipTests $@)
 
 # Actually build the jar
 echo -e "\nBuilding with..."
@@ -175,30 +175,30 @@ echo -e "\$ ${BUILD_COMMAND[@]}\n"
 "${BUILD_COMMAND[@]}"
 
 # Make directories
-rm -rf "$DISTDIR"
+#rm -rf "$DISTDIR"
 mkdir -p "$DISTDIR/jars"
 echo "Spark $VERSION$GITREVSTRING built for Hadoop $SPARK_HADOOP_VERSION" > "$DISTDIR/RELEASE"
 echo "Build flags: $@" >> "$DISTDIR/RELEASE"
 
 # Copy jars
-cp "$SPARK_HOME"/assembly/target/scala*/jars/* "$DISTDIR/jars/"
+cp -f "$SPARK_HOME"/assembly/target/scala*/jars/* "$DISTDIR/jars/"
 
 # Only create the yarn directory if the yarn artifacts were built.
 if [ -f "$SPARK_HOME"/common/network-yarn/target/scala*/spark-*-yarn-shuffle.jar ]; then
   mkdir "$DISTDIR/yarn"
-  cp "$SPARK_HOME"/common/network-yarn/target/scala*/spark-*-yarn-shuffle.jar "$DISTDIR/yarn"
+  cp -f "$SPARK_HOME"/common/network-yarn/target/scala*/spark-*-yarn-shuffle.jar "$DISTDIR/yarn"
 fi
 
 # Only create and copy the dockerfiles directory if the kubernetes artifacts were built.
 if [ -d "$SPARK_HOME"/resource-managers/kubernetes/core/target/ ]; then
   mkdir -p "$DISTDIR/kubernetes/"
-  cp -a "$SPARK_HOME"/resource-managers/kubernetes/docker/src/main/dockerfiles "$DISTDIR/kubernetes/"
-  cp -a "$SPARK_HOME"/resource-managers/kubernetes/integration-tests/tests "$DISTDIR/kubernetes/"
+  cp -f -a "$SPARK_HOME"/resource-managers/kubernetes/docker/src/main/dockerfiles "$DISTDIR/kubernetes/"
+  cp -f -a "$SPARK_HOME"/resource-managers/kubernetes/integration-tests/tests "$DISTDIR/kubernetes/"
 fi
 
 # Copy examples and dependencies
 mkdir -p "$DISTDIR/examples/jars"
-cp "$SPARK_HOME"/examples/target/scala*/jars/* "$DISTDIR/examples/jars"
+cp -f "$SPARK_HOME"/examples/target/scala*/jars/* "$DISTDIR/examples/jars"
 
 # Deduplicate jars that have already been packaged as part of the main Spark dependencies.
 for f in "$DISTDIR"/examples/jars/*; do
@@ -210,23 +210,23 @@ done
 
 # Copy example sources (needed for python and SQL)
 mkdir -p "$DISTDIR/examples/src/main"
-cp -r "$SPARK_HOME/examples/src/main" "$DISTDIR/examples/src/"
+cp -f -r "$SPARK_HOME/examples/src/main" "$DISTDIR/examples/src/"
 
 # Copy license and ASF files
 if [ -e "$SPARK_HOME/LICENSE-binary" ]; then
-  cp "$SPARK_HOME/LICENSE-binary" "$DISTDIR/LICENSE"
-  cp -r "$SPARK_HOME/licenses-binary" "$DISTDIR/licenses"
-  cp "$SPARK_HOME/NOTICE-binary" "$DISTDIR/NOTICE"
+  cp -f "$SPARK_HOME/LICENSE-binary" "$DISTDIR/LICENSE"
+  cp -f -r "$SPARK_HOME/licenses-binary" "$DISTDIR/licenses"
+  cp -f "$SPARK_HOME/NOTICE-binary" "$DISTDIR/NOTICE"
 else
   echo "Skipping copying LICENSE files"
 fi
 
 if [ -e "$SPARK_HOME/CHANGES.txt" ]; then
-  cp "$SPARK_HOME/CHANGES.txt" "$DISTDIR"
+  cp -f "$SPARK_HOME/CHANGES.txt" "$DISTDIR"
 fi
 
 # Copy data files
-cp -r "$SPARK_HOME/data" "$DISTDIR"
+cp -f -r "$SPARK_HOME/data" "$DISTDIR"
 
 # Make pip package
 if [ "$MAKE_PIP" == "true" ]; then
@@ -264,29 +264,29 @@ fi
 
 # Copy other things
 mkdir "$DISTDIR/conf"
-cp "$SPARK_HOME"/conf/*.template "$DISTDIR/conf"
-cp "$SPARK_HOME/README.md" "$DISTDIR"
-cp -r "$SPARK_HOME/bin" "$DISTDIR"
-cp -r "$SPARK_HOME/python" "$DISTDIR"
+cp -f "$SPARK_HOME"/conf/*.template "$DISTDIR/conf"
+cp -f "$SPARK_HOME/README.md" "$DISTDIR"
+cp -f -r "$SPARK_HOME/bin" "$DISTDIR"
+cp -f -r "$SPARK_HOME/python" "$DISTDIR"
 
 # Remove the python distribution from dist/ if we built it
 if [ "$MAKE_PIP" == "true" ]; then
   rm -f "$DISTDIR"/python/dist/pyspark-*.tar.gz
 fi
 
-cp -r "$SPARK_HOME/sbin" "$DISTDIR"
+cp -f -r "$SPARK_HOME/sbin" "$DISTDIR"
 # Copy SparkR if it exists
 if [ -d "$SPARK_HOME/R/lib/SparkR" ]; then
   mkdir -p "$DISTDIR/R/lib"
-  cp -r "$SPARK_HOME/R/lib/SparkR" "$DISTDIR/R/lib"
-  cp "$SPARK_HOME/R/lib/sparkr.zip" "$DISTDIR/R/lib"
+  cp -f -r "$SPARK_HOME/R/lib/SparkR" "$DISTDIR/R/lib"
+  cp -f "$SPARK_HOME/R/lib/sparkr.zip" "$DISTDIR/R/lib"
 fi
 
 if [ "$MAKE_TGZ" == "true" ]; then
   TARDIR_NAME=spark-$VERSION-bin-$NAME
   TARDIR="$SPARK_HOME/$TARDIR_NAME"
   rm -rf "$TARDIR"
-  cp -r "$DISTDIR" "$TARDIR"
+  cp -f -r "$DISTDIR" "$TARDIR"
   TAR="tar"
   if [ "$(uname -s)" = "Darwin" ]; then
     TAR="tar --no-mac-metadata --no-xattrs --no-fflags"

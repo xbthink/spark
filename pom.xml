@@ -92,7 +92,7 @@
     <module>sql/core</module>
     <module>sql/hive</module>
     <module>assembly</module>
-    <module>examples</module>
+<!--    <module>examples</module>-->
     <module>repl</module>
     <module>launcher</module>
     <module>connector/kafka-0-10-token-provider</module>
