@@ -704,12 +704,14 @@ case class FileSourceScanExec(
         if (shouldProcess(filePath)) {
           var extendedInfo: Array[Byte] = Array.empty
           if (relation.fileFormat.isInstanceOf[OrcFileFormat]) {
+            logInfo(s"Getting orc file tail ${filePath}")
             val conf = relation.sparkSession.sessionState
               .newHadoopConfWithOptions(relation.options)
             val reader = OrcFile.createReader(filePath,
               OrcFile.readerOptions(conf).maxLength(OrcConf.MAX_FILE_LENGTH.getLong(conf)))
             extendedInfo = new OrcTail(reader.getFileTail, reader.getSerializedFileFooter,
-              file.getModificationTime).getMinimalFileTail.toByteArray;
+              file.getModificationTime).getMinimalFileTail.toByteArray
+            logInfo(s"Got orc file tail ${filePath}")
           }
           val isSplitable = relation.fileFormat.isSplitable(
               relation.sparkSession, relation.options, filePath) &&
