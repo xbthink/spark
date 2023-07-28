@@ -16,17 +16,16 @@
  */
 package org.apache.spark.sql.execution.datasources.orc
 
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import java.nio.ByteBuffer
 
 import org.apache.orc.OrcProto
 import org.apache.orc.impl.OrcTail
 
-import org.apache.spark.util.{ByteBufferInputStream, ByteBufferOutputStream}
-
 object OrcTailSerde {
   def serialize(ot: OrcTail): Array[Byte] = {
     val fileTail = ot.getMinimalFileTail.toByteArray
-    val bos = new ByteBufferOutputStream()
+    val bos = new ByteArrayOutputStream()
     bos.write(fileTail.length)
     bos.write(fileTail)
     val serializedTail = ot.getSerializedTail.array()
@@ -36,7 +35,7 @@ object OrcTailSerde {
   }
 
   def deserialize(bytes: Array[Byte]): OrcTail = {
-    val bis = new ByteBufferInputStream(ByteBuffer.wrap(bytes))
+    val bis = new ByteArrayInputStream(bytes)
     var length = bis.read()
     var tmpArray = new Array[Byte](length)
     bis.read(tmpArray, 0, length)
