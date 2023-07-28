@@ -16,45 +16,35 @@
  */
 package org.apache.spark.sql.execution.datasources.orc
 
-import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream, DataInputStream, DataOutputStream}
 import java.nio.ByteBuffer
 
 import org.apache.orc.OrcProto
 import org.apache.orc.impl.OrcTail
 
-import org.apache.spark.internal.Logging
-
-object OrcTailSerde extends Logging {
+object OrcTailSerde {
   def serialize(ot: OrcTail): Array[Byte] = {
     val fileTail = ot.getMinimalFileTail.toByteArray
-    logInfo(s"orc fileTail byte length ${fileTail.length}")
     val bos = new ByteArrayOutputStream()
-    bos.write(fileTail.length)
-    bos.write(fileTail)
+    val dos = new DataOutputStream(new ByteArrayOutputStream())
+    dos.writeInt(fileTail.length)
+    dos.write(fileTail)
     val serializedTail = ot.getSerializedTail.array()
-    logInfo(s"orc serializedTail byte length ${serializedTail.length}")
-    bos.write(serializedTail.length)
-    bos.write(serializedTail)
-    val bytes = bos.toByteArray
-    logInfo(s"orc tail byte length ${bytes.length}")
-    bytes
+    dos.writeInt(serializedTail.length)
+    dos.write(serializedTail)
+    bos.toByteArray
   }
 
   def deserialize(bytes: Array[Byte]): OrcTail = {
-    logInfo(s"orc tail byte length ${bytes.length}")
-    val bis = new ByteArrayInputStream(bytes)
-    var length = bis.read()
-    logInfo(s"orc fileTail byte length ${length}")
+    val dis = new DataInputStream(new ByteArrayInputStream(bytes))
+    var length = dis.readInt()
     var tmpArray = new Array[Byte](length)
-    var ret = bis.read(tmpArray, 0, length)
-    assert(ret == length, "read uncompleted tail")
+    dis.readFully(tmpArray)
     val fileTail = OrcProto.FileTail.parseFrom(tmpArray)
 
-    length = bis.read()
-    logInfo(s"orc serializedTail byte length ${length}")
+    length = dis.readInt()
     tmpArray = new Array[Byte](length)
-    ret = bis.read(tmpArray, 0, length)
-    assert(ret == length, "read uncompleted tail")
+    dis.readFully(tmpArray)
 
     new OrcTail(fileTail, ByteBuffer.wrap(tmpArray))
   }
