@@ -22,7 +22,9 @@ import java.nio.ByteBuffer
 import org.apache.orc.OrcProto
 import org.apache.orc.impl.OrcTail
 
-object OrcTailSerde {
+import org.apache.spark.internal.Logging
+
+object OrcTailSerde extends Logging {
   def serialize(ot: OrcTail): Array[Byte] = {
     val fileTail = ot.getMinimalFileTail.toByteArray
     val bos = new ByteArrayOutputStream()
@@ -31,19 +33,24 @@ object OrcTailSerde {
     val serializedTail = ot.getSerializedTail.array()
     bos.write(serializedTail.length)
     bos.write(serializedTail)
-    bos.toByteArray
+    val bytes = bos.toByteArray
+    logInfo(s"orc tail byte length ${bytes.length}")
+    bytes
   }
 
   def deserialize(bytes: Array[Byte]): OrcTail = {
+    logInfo(s"orc tail byte length ${bytes.length}")
     val bis = new ByteArrayInputStream(bytes)
     var length = bis.read()
     var tmpArray = new Array[Byte](length)
-    bis.read(tmpArray, 0, length)
+    var ret = bis.read(tmpArray, 0, length)
+    assert(ret == length, "read uncompleted tail")
     val fileTail = OrcProto.FileTail.parseFrom(tmpArray)
 
     length = bis.read()
     tmpArray = new Array[Byte](length)
-    bis.read(tmpArray, 0, length)
+    ret = bis.read(tmpArray, 0, length)
+    assert(ret == length, "read uncompleted tail")
 
     new OrcTail(fileTail, ByteBuffer.wrap(tmpArray))
   }
