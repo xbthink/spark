@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit._
 
 import org.apache.commons.lang3.StringUtils
 import org.apache.hadoop.fs.Path
-import org.apache.orc.{OrcConf, OrcFile}
+import org.apache.orc.{OrcConf, OrcFile, Reader}
 import org.apache.orc.impl.OrcTail
 
 import org.apache.spark.rdd.RDD
@@ -33,7 +33,7 @@ import org.apache.spark.sql.catalyst.plans.physical.{HashPartitioning, Partition
 import org.apache.spark.sql.catalyst.util.{truncatedString, CaseInsensitiveMap}
 import org.apache.spark.sql.errors.QueryExecutionErrors
 import org.apache.spark.sql.execution.datasources._
-import org.apache.spark.sql.execution.datasources.orc.OrcFileFormat
+import org.apache.spark.sql.execution.datasources.orc.{OrcFileFormat, OrcTailSerde}
 import org.apache.spark.sql.execution.datasources.parquet.{ParquetFileFormat => ParquetSource}
 import org.apache.spark.sql.execution.datasources.v2.PushedDownOperators
 import org.apache.spark.sql.execution.metric.{SQLMetric, SQLMetrics}
@@ -707,10 +707,16 @@ case class FileSourceScanExec(
             logInfo(s"Getting orc file tail ${filePath}")
             val conf = relation.sparkSession.sessionState
               .newHadoopConfWithOptions(relation.options)
-            val reader = OrcFile.createReader(filePath,
-              OrcFile.readerOptions(conf).maxLength(OrcConf.MAX_FILE_LENGTH.getLong(conf)))
-            extendedInfo = new OrcTail(reader.getFileTail, reader.getSerializedFileFooter,
-              file.getModificationTime).getMinimalFileTail.toByteArray
+            var reader: Reader = null
+            try {
+              reader = OrcFile.createReader(filePath,
+                OrcFile.readerOptions(conf).maxLength(OrcConf.MAX_FILE_LENGTH.getLong(conf)))
+                extendedInfo = OrcTailSerde.serialize(
+                  new OrcTail(reader.getFileTail, reader.getSerializedFileFooter,
+                  file.getModificationTime))
+            } finally {
+              reader.close()
+            }
             logInfo(s"Got orc file tail ${filePath}")
           }
           val isSplitable = relation.fileFormat.isSplitable(
