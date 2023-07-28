@@ -37,18 +37,14 @@ object OrcTailSerde {
 
   def deserialize(bytes: Array[Byte]): OrcTail = {
     val bis = new ByteBufferInputStream(ByteBuffer.wrap(bytes))
-    var offset = 0;
     var length = bis.read()
-    offset += 1
     var tmpArray = new Array[Byte](length)
-    bis.read(tmpArray, offset, length)
-    offset += length
+    bis.read(tmpArray, 0, length)
     val fileTail = OrcProto.FileTail.parseFrom(tmpArray)
 
     length = bis.read()
-    offset += 1
     tmpArray = new Array[Byte](length)
-    bis.read(tmpArray, offset, length)
+    bis.read(tmpArray, 0, length)
 
     new OrcTail(fileTail, ByteBuffer.wrap(tmpArray))
   }
