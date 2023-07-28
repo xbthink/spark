@@ -27,6 +27,7 @@ import org.apache.hadoop.mapreduce.lib.input.FileSplit
 import org.apache.hadoop.mapreduce.task.TaskAttemptContextImpl
 import org.apache.orc.{OrcUtils => _, _}
 import org.apache.orc.OrcConf.COMPRESS
+import org.apache.orc.impl.OrcTail
 import org.apache.orc.mapred.OrcStruct
 import org.apache.orc.mapreduce._
 
@@ -44,7 +45,7 @@ case class OrcSplit(file: Path,
                     start: Long,
                     length: Long,
                     hosts: Array[String],
-                    extendedInfo: Array[Byte] = Array.empty)
+                    orcTail: OrcTail)
   extends FileSplit(file, start, length, hosts) {
 }
 
@@ -174,9 +175,8 @@ class OrcFileFormat
       val filePath = file.toPath
 
       val fs = filePath.getFileSystem(conf)
-      val readerOptions = OrcFile.readerOptions(conf).filesystem(fs)
-      val orcSchema =
-        Utils.tryWithResource(OrcFile.createReader(filePath, readerOptions))(_.getSchema)
+      val orcTail = OrcTailSerde.deserialize(file.extendedInfo)
+      val orcSchema = orcTail.getSchema
       val resultedColPruneInfo = OrcUtils.requestedColumnIds(
         isCaseSensitive, dataSchema, requiredSchema, orcSchema, conf)
 
@@ -200,8 +200,7 @@ class OrcFileFormat
 
         val includeColumns = requestedColIds.filter(_ != -1).sorted.mkString(",")
         taskConf.set(OrcConf.INCLUDE_COLUMNS.getAttribute, includeColumns)
-        val orcSplit = new OrcSplit(filePath, file.start, file.length, Array.empty,
-          file.extendedInfo)
+        val orcSplit = OrcSplit(filePath, file.start, file.length, Array.empty, orcTail)
         val attemptId = new TaskAttemptID(new TaskID(new JobID(), TaskType.MAP, 0), 0)
         val taskAttemptContext = new TaskAttemptContextImpl(taskConf, attemptId)
 

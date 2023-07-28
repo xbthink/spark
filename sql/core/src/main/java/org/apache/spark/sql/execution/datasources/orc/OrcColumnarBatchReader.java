@@ -118,14 +118,13 @@ public class OrcColumnarBatchReader extends RecordReader<Void, ColumnarBatch> {
   public void initialize(
       InputSplit inputSplit, TaskAttemptContext taskAttemptContext) throws IOException {
     OrcSplit orcSplit = (OrcSplit)inputSplit;
-    OrcTail orcTail = OrcTailSerde.deserialize(orcSplit.extendedInfo());
     Configuration conf = taskAttemptContext.getConfiguration();
     Reader reader = OrcFile.createReader(
       orcSplit.getPath(),
       OrcFile.readerOptions(conf)
         .maxLength(OrcConf.MAX_FILE_LENGTH.getLong(conf))
         .filesystem(orcSplit.getPath().getFileSystem(conf))
-        .orcTail(orcTail));
+        .orcTail(orcSplit.orcTail()));
     Reader.Options options =
       OrcInputFormat.buildOptions(conf, reader, orcSplit.getStart(), orcSplit.getLength());
     recordReader = reader.rows(options);
