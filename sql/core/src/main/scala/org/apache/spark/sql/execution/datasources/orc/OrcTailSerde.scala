@@ -27,10 +27,12 @@ import org.apache.spark.internal.Logging
 object OrcTailSerde extends Logging {
   def serialize(ot: OrcTail): Array[Byte] = {
     val fileTail = ot.getMinimalFileTail.toByteArray
+    logInfo(s"orc fileTail byte length ${fileTail.length}")
     val bos = new ByteArrayOutputStream()
     bos.write(fileTail.length)
     bos.write(fileTail)
     val serializedTail = ot.getSerializedTail.array()
+    logInfo(s"orc serializedTail byte length ${serializedTail.length}")
     bos.write(serializedTail.length)
     bos.write(serializedTail)
     val bytes = bos.toByteArray
@@ -42,12 +44,14 @@ object OrcTailSerde extends Logging {
     logInfo(s"orc tail byte length ${bytes.length}")
     val bis = new ByteArrayInputStream(bytes)
     var length = bis.read()
+    logInfo(s"orc fileTail byte length ${length}")
     var tmpArray = new Array[Byte](length)
     var ret = bis.read(tmpArray, 0, length)
     assert(ret == length, "read uncompleted tail")
     val fileTail = OrcProto.FileTail.parseFrom(tmpArray)
 
     length = bis.read()
+    logInfo(s"orc serializedTail byte length ${length}")
     tmpArray = new Array[Byte](length)
     ret = bis.read(tmpArray, 0, length)
     assert(ret == length, "read uncompleted tail")
