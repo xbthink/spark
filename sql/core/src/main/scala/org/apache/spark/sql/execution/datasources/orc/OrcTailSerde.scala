@@ -26,7 +26,7 @@ object OrcTailSerde {
   def serialize(ot: OrcTail): Array[Byte] = {
     val fileTail = ot.getMinimalFileTail.toByteArray
     val bos = new ByteArrayOutputStream()
-    val dos = new DataOutputStream(new ByteArrayOutputStream())
+    val dos = new DataOutputStream(bos)
     dos.writeInt(fileTail.length)
     dos.write(fileTail)
     val serializedTail = ot.getSerializedTail.array()
