@@ -29,9 +29,9 @@ object OrcTailSerde {
     val dos = new DataOutputStream(bos)
     dos.writeInt(fileTail.length)
     dos.write(fileTail)
-    val serializedTail = ot.getSerializedTail.array()
-    dos.writeInt(serializedTail.length)
-    dos.write(serializedTail)
+//    val serializedTail = ot.getSerializedTail.array()
+//    dos.writeInt(serializedTail.length)
+//    dos.write(serializedTail)
     bos.toByteArray
   }
 
@@ -42,10 +42,10 @@ object OrcTailSerde {
     dis.readFully(tmpArray)
     val fileTail = OrcProto.FileTail.parseFrom(tmpArray)
 
-    length = dis.readInt()
-    tmpArray = new Array[Byte](length)
-    dis.readFully(tmpArray)
-
-    new OrcTail(fileTail, ByteBuffer.wrap(tmpArray))
+//    length = dis.readInt()
+//    tmpArray = new Array[Byte](length)
+//    dis.readFully(tmpArray)
+//    new OrcTail(fileTail, ByteBuffer.wrap(tmpArray))
+    new OrcTail(fileTail, null)
   }
 }
