@@ -17,7 +17,6 @@
 package org.apache.spark.sql.execution.datasources.orc
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, DataInputStream, DataOutputStream}
-import java.nio.ByteBuffer
 
 import org.apache.orc.OrcProto
 import org.apache.orc.impl.OrcTail
