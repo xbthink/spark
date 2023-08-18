@@ -17,6 +17,7 @@
 
 package org.apache.spark
 
+import java.util.StringJoiner
 import java.util.concurrent.TimeUnit
 
 import scala.collection.mutable
@@ -957,6 +958,17 @@ private[spark] class ExecutorAllocationManager(
         localityAwareTasksPerResourceProfileId
       allocationManager.rpIdToHostToLocalTaskCount =
         rplocalityToCount.map { case (k, v) => (k, v.toMap)}.toMap
+
+      if (log.isDebugEnabled()) {
+        val sj = new StringJoiner(";")
+        rplocalityToCount.foreach { case (rpId, hostCount) =>
+          sj.add(s"resource profile id: $rpId")
+          hostCount.foreach { case (hostname, count) =>
+            sj.add(s"$hostname: $count")
+          }
+        }
+        logDebug(sj.toString)
+      }
     }
   }
 }

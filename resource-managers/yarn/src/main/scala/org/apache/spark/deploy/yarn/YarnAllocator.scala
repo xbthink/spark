@@ -17,7 +17,7 @@
 
 package org.apache.spark.deploy.yarn
 
-import java.util.LinkedHashMap
+import java.util.{LinkedHashMap, StringJoiner}
 import java.util.Map.Entry
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
@@ -722,7 +722,9 @@ private[yarn] class YarnAllocator(
     // Match the allocation to a request
     if (!matchingRequests.isEmpty) {
       val containerRequest = matchingRequests.get(0).iterator.next
-      logDebug(s"Removing container request via AM client: $containerRequest")
+      val sj = new StringJoiner(":", "[", "]")
+      containerRequest.getNodes.forEach(sj.add)
+      logDebug(s"Removing container request via AM client: $containerRequest, nodes:${sj.toString}")
       amClient.removeContainerRequest(containerRequest)
       containersToUse += allocatedContainer
     } else {
