@@ -723,7 +723,9 @@ private[yarn] class YarnAllocator(
     if (!matchingRequests.isEmpty) {
       val containerRequest = matchingRequests.get(0).iterator.next
       val sj = new StringJoiner(":", "[", "]")
-      containerRequest.getNodes.forEach(sj.add)
+      if (containerRequest.getNodes != null) {
+        containerRequest.getNodes.forEach(sj.add)
+      }
       logDebug(s"Removing container request via AM client: $containerRequest, nodes:${sj.toString}")
       amClient.removeContainerRequest(containerRequest)
       containersToUse += allocatedContainer
