@@ -144,6 +144,9 @@ private[yarn] class YarnAllocator(
   private[yarn] var numLocalityAwareTasksPerResourceProfileId: Map[Int, Int] =
     Map(DEFAULT_RESOURCE_PROFILE_ID -> 0)
 
+  @GuardedBy("this")
+  private[yarn] var allocationRequestId = 0L
+
   /**
    * Used to generate a unique ID per executor
    *
@@ -613,8 +616,9 @@ private[yarn] class YarnAllocator(
       nodes: Array[String],
       racks: Array[String],
       rpId: Int): ContainerRequest = {
+    allocationRequestId = allocationRequestId + 1
     new ContainerRequest(resource, nodes, racks, getContainerPriority(rpId),
-      true, labelExpression.orNull)
+      allocationRequestId, true, labelExpression.orNull)
   }
 
   /**
@@ -716,12 +720,11 @@ private[yarn] class YarnAllocator(
     logDebug(s"Calling amClient.getMatchingRequests with parameters: " +
         s"priority: ${allocatedContainer.getPriority}, " +
         s"location: $location, resource: $resourceForRP")
-    val matchingRequests = amClient.getMatchingRequests(allocatedContainer.getPriority, location,
-      resourceForRP)
+    val matchingRequests = amClient.getMatchingRequests(allocatedContainer.getAllocationRequestId)
 
     // Match the allocation to a request
     if (!matchingRequests.isEmpty) {
-      val containerRequest = matchingRequests.get(0).iterator.next
+      val containerRequest = matchingRequests.iterator().next()
       val sj = new StringJoiner(":", "[", "]")
       if (containerRequest.getNodes != null) {
         containerRequest.getNodes.forEach(sj.add)
