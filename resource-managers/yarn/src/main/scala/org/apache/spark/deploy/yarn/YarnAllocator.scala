@@ -624,12 +624,8 @@ private[yarn] class YarnAllocator(
     allocationRequestId = allocationRequestId + 1
     val request = new ContainerRequest(resource, nodes, racks, getContainerPriority(rpId),
       allocationRequestId, true, labelExpression.orNull)
-    var requestMap = containerRequestMap(rpId)
-    if (requestMap == null) {
-      requestMap = new HashMap[Long, ContainerRequest]
-      containerRequestMap(rpId) = requestMap
-    }
-    requestMap(allocationRequestId) = request
+    val requestMap = containerRequestMap.getOrElseUpdate(rpId, new HashMap[Long, ContainerRequest])
+    requestMap.put(allocationRequestId, request)
     request
   }
 
