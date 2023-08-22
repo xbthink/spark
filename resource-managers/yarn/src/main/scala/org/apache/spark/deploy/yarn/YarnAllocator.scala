@@ -252,8 +252,8 @@ private[yarn] class YarnAllocator(
    * A sequence of pending container requests that have not yet been fulfilled.
    * ResourceProfile id -> pendingAllocate container request
    */
-  def getPendingAllocate: HashMap[Int, Iterable[ContainerRequest]] = containerRequestMap.map {
-    case(k, v) => k -> v.values
+  def getPendingAllocate: HashMap[Int, Seq[ContainerRequest]] = containerRequestMap.map {
+    case(k, v) => k -> v.values.toSeq
   }
 
   def getNumContainersPendingAllocate: Int = synchronized {
