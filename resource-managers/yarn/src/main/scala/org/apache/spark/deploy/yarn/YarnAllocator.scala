@@ -147,6 +147,9 @@ private[yarn] class YarnAllocator(
   @GuardedBy("this")
   private[yarn] var allocationRequestId = 0L
 
+  @GuardedBy("this")
+  private[yarn] val containerRequestMap = new HashMap[Int, HashMap[Long, ContainerRequest]]
+
   /**
    * Used to generate a unique ID per executor
    *
@@ -249,7 +252,9 @@ private[yarn] class YarnAllocator(
    * A sequence of pending container requests that have not yet been fulfilled.
    * ResourceProfile id -> pendingAllocate container request
    */
-  def getPendingAllocate: Map[Int, Seq[ContainerRequest]] = getPendingAtLocation(ANY_HOST)
+  def getPendingAllocate: HashMap[Int, Iterable[ContainerRequest]] = containerRequestMap.map {
+    case(k, v) => k -> v.values
+  }
 
   def getNumContainersPendingAllocate: Int = synchronized {
     getPendingAllocate.values.flatten.size
@@ -617,8 +622,15 @@ private[yarn] class YarnAllocator(
       racks: Array[String],
       rpId: Int): ContainerRequest = {
     allocationRequestId = allocationRequestId + 1
-    new ContainerRequest(resource, nodes, racks, getContainerPriority(rpId),
+    val request = new ContainerRequest(resource, nodes, racks, getContainerPriority(rpId),
       allocationRequestId, true, labelExpression.orNull)
+    var requestMap = containerRequestMap(rpId)
+    if (requestMap == null) {
+      requestMap = new HashMap[Long, ContainerRequest]
+      containerRequestMap(rpId) = requestMap
+    }
+    requestMap(allocationRequestId) = request
+    request
   }
 
   /**
@@ -732,6 +744,7 @@ private[yarn] class YarnAllocator(
       logDebug(s"Removing container request via AM client: $containerRequest, nodes:${sj.toString}")
       amClient.removeContainerRequest(containerRequest)
       containersToUse += allocatedContainer
+      containerRequestMap(rpId).remove(allocatedContainer.getAllocationRequestId)
     } else {
       remaining += allocatedContainer
     }
